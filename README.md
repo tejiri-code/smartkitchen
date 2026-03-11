@@ -57,27 +57,62 @@ graph TD
 
 ## Dataset Setup
 
-The Food.com dataset is **not included in this repository** due to file size. You must download it manually before running the app.
+Neither large dataset is included in this repository. Follow the instructions below before training.
 
-### Download from Kaggle
+---
+
+### Food-101 (Dish Classifier)
+
+**Auto-downloaded** — no manual steps needed.
+
+When you run the dish training script, torchvision downloads Food-101 automatically into `data/food101/`:
+
+```bash
+python training/train_dish.py --data-dir data/food101
+```
+
+After downloading, the folder will look like this:
+
+```
+data/
+└── food101/
+    ├── food-101.tar.gz         # Downloaded archive (4.7 GB)
+    └── food-101/
+        ├── images/             # 101 class folders, ~1,000 images each (5 GB)
+        ├── meta/
+        │   ├── classes.txt
+        │   ├── labels.txt
+        │   ├── train.json
+        │   ├── train.txt
+        │   ├── test.json
+        │   └── test.txt
+        ├── README.txt
+        └── license_agreement.txt
+```
+
+> Total size: ~10 GB (archive + extracted). `data/food101/` is listed in `.gitignore`.
+
+---
+
+### Food.com (Recipe Engine)
+
+Must be downloaded manually from Kaggle:
 
 **[Food.com Recipes and User Interactions](https://www.kaggle.com/datasets/shuyangli94/food-com-recipes-and-user-interactions)**
 
-Download and extract the archive, then place all files under `data/foodcom/` as shown below.
-
-### Expected folder structure
+Download and extract the archive, then place all files under `data/foodcom/`:
 
 ```
 data/
 └── foodcom/
-    ├── PP_recipes.csv              # Pre-processed recipes (~195 MB)
-    ├── PP_users.csv                # Pre-processed user data
-    ├── RAW_recipes.csv             # Raw recipe data (~280 MB)
-    ├── RAW_interactions.csv        # Raw user interactions (~333 MB)
-    ├── ingr_map.pkl                # Ingredient ID mapping (pickle)
-    ├── interactions_train.csv      # Train split
-    ├── interactions_validation.csv # Validation split
-    └── interactions_test.csv       # Test split
+    ├── PP_recipes.csv              # Pre-processed recipes (195 MB)
+    ├── PP_users.csv                # Pre-processed user data (13 MB)
+    ├── RAW_recipes.csv             # Raw recipe data (281 MB)
+    ├── RAW_interactions.csv        # Raw user interactions (333 MB)
+    ├── ingr_map.pkl                # Ingredient ID mapping (897 KB)
+    ├── interactions_train.csv      # Train split (27 MB)
+    ├── interactions_validation.csv # Validation split (285 KB)
+    └── interactions_test.csv       # Test split (510 KB)
 ```
 
 > `data/foodcom/` is listed in `.gitignore` and will never be committed to the repo.
