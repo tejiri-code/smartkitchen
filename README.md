@@ -55,6 +55,35 @@ graph TD
 
 ---
 
+## Dataset Setup
+
+The Food.com dataset is **not included in this repository** due to file size. You must download it manually before running the app.
+
+### Download from Kaggle
+
+**[Food.com Recipes and User Interactions](https://www.kaggle.com/datasets/shuyangli94/food-com-recipes-and-user-interactions)**
+
+Download and extract the archive, then place all files under `data/foodcom/` as shown below.
+
+### Expected folder structure
+
+```
+data/
+└── foodcom/
+    ├── PP_recipes.csv              # Pre-processed recipes (~195 MB)
+    ├── PP_users.csv                # Pre-processed user data
+    ├── RAW_recipes.csv             # Raw recipe data (~280 MB)
+    ├── RAW_interactions.csv        # Raw user interactions (~333 MB)
+    ├── ingr_map.pkl                # Ingredient ID mapping (pickle)
+    ├── interactions_train.csv      # Train split
+    ├── interactions_validation.csv # Validation split
+    └── interactions_test.csv       # Test split
+```
+
+> `data/foodcom/` is listed in `.gitignore` and will never be committed to the repo.
+
+---
+
 ## Quick Start
 
 ### 1. Install dependencies

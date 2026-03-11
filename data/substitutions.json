@@ -1,0 +1,177 @@
+{
+    "egg": {
+        "alternatives": [
+            "tofu scramble",
+            "flax egg",
+            "chickpea flour batter",
+            "mashed banana",
+            "applesauce"
+        ],
+        "notes": "Flax egg: 1 tbsp ground flaxseed + 3 tbsp water. Tofu scramble works for savoury dishes. Banana/applesauce for baking."
+    },
+    "onion": {
+        "alternatives": [
+            "spring onion",
+            "shallot",
+            "leek",
+            "celery",
+            "fennel"
+        ],
+        "notes": "Shallots are milder. Leeks work well in soups. Celery adds crunch without strong flavour."
+    },
+    "tomato": {
+        "alternatives": [
+            "passata",
+            "canned tomatoes",
+            "sun-dried tomatoes",
+            "roasted red pepper",
+            "tomato paste diluted"
+        ],
+        "notes": "Passata gives smooth consistency. Sun-dried tomatoes are more concentrated in flavour."
+    },
+    "garlic": {
+        "alternatives": [
+            "garlic powder",
+            "garlic granules",
+            "shallot",
+            "asafoetida"
+        ],
+        "notes": "Use 1/4 tsp garlic powder per clove. Asafoetida is common in Indian cooking as a garlic substitute."
+    },
+    "rice": {
+        "alternatives": [
+            "quinoa",
+            "couscous",
+            "cauliflower rice",
+            "bulgur wheat",
+            "orzo"
+        ],
+        "notes": "Cauliflower rice is low-carb. Quinoa adds more protein. Couscous cooks faster."
+    },
+    "pasta": {
+        "alternatives": [
+            "rice noodles",
+            "gluten-free pasta",
+            "zucchini noodles",
+            "gnocchi",
+            "egg noodles"
+        ],
+        "notes": "Zucchini noodles (courgetti) are low-carb. Rice noodles are gluten-free."
+    },
+    "bread": {
+        "alternatives": [
+            "sourdough",
+            "naan",
+            "pita",
+            "tortilla wrap",
+            "rice cakes",
+            "gluten-free bread"
+        ],
+        "notes": "Sourdough is easier to digest. Naan and pita work well for dipping."
+    },
+    "milk": {
+        "alternatives": [
+            "oat milk",
+            "almond milk",
+            "coconut milk",
+            "soy milk",
+            "cream"
+        ],
+        "notes": "Oat milk is best for cooking (neutral flavour). Coconut milk adds richness to curries."
+    },
+    "cheese": {
+        "alternatives": [
+            "nutritional yeast",
+            "vegan cheese",
+            "avocado",
+            "hummus",
+            "cashew cream"
+        ],
+        "notes": "Nutritional yeast gives a cheesy flavour. Cashew cream works for sauces."
+    },
+    "pepper": {
+        "alternatives": [
+            "courgette",
+            "mushroom",
+            "aubergine",
+            "celery",
+            "sweetcorn"
+        ],
+        "notes": "Courgette adds similar bulk. Mushrooms add umami depth."
+    },
+    "potato": {
+        "alternatives": [
+            "sweet potato",
+            "cauliflower",
+            "turnip",
+            "parsnip",
+            "butternut squash"
+        ],
+        "notes": "Sweet potato adds natural sweetness. Cauliflower is low-carb alternative for mash."
+    },
+    "butter": {
+        "alternatives": [
+            "olive oil",
+            "coconut oil",
+            "vegan butter",
+            "avocado"
+        ],
+        "notes": "Olive oil works for most savoury cooking. Coconut oil works for baking."
+    },
+    "cream": {
+        "alternatives": [
+            "coconut cream",
+            "cashew cream",
+            "oat cream",
+            "silken tofu blend"
+        ],
+        "notes": "Coconut cream is thick and rich. Cashew cream is neutral-tasting."
+    },
+    "soy_sauce": {
+        "alternatives": [
+            "tamari",
+            "coconut aminos",
+            "Worcestershire sauce",
+            "miso paste diluted"
+        ],
+        "notes": "Tamari is gluten-free. Coconut aminos is lower sodium."
+    },
+    "sugar": {
+        "alternatives": [
+            "honey",
+            "maple syrup",
+            "agave nectar",
+            "date syrup",
+            "stevia"
+        ],
+        "notes": "Honey and maple syrup add distinct flavours. Reduce liquid slightly when substituting."
+    },
+    "flour": {
+        "alternatives": [
+            "almond flour",
+            "oat flour",
+            "coconut flour",
+            "rice flour",
+            "cornstarch"
+        ],
+        "notes": "Almond flour is high-protein. Coconut flour is very absorbent — use less."
+    },
+    "stock": {
+        "alternatives": [
+            "bouillon cube",
+            "miso paste diluted",
+            "vegetable broth",
+            "water with soy sauce"
+        ],
+        "notes": "Miso paste adds umami. A bouillon cube dissolved in water works in a pinch."
+    },
+    "olive_oil": {
+        "alternatives": [
+            "vegetable oil",
+            "coconut oil",
+            "avocado oil",
+            "sunflower oil"
+        ],
+        "notes": "Avocado oil has a high smoke point for frying. Coconut oil adds slight sweetness."
+    }
+}

@@ -1,4 +1,7 @@
-/data/
+/data/food101/
+/data/grocery_dataset/
+/data/foodcom/
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
