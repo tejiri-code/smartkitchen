@@ -259,10 +259,10 @@ def render_sidebar():
         help="Minimum confidence for ingredient detection",
     )
 
-    load_hf_model = st.sidebar.checkbox(
-        "Load Hugging Face model",
+    enable_ollama = st.sidebar.checkbox(
+        "Enable Qwen (Ollama)",
         value=False,
-        help="Download & load FLAN-T5-small (~300MB). Uses template fallback if unchecked.",
+        help="Connects to local Ollama server. Uses template fallback if unchecked.",
     )
 
     st.sidebar.markdown("---")
@@ -271,7 +271,7 @@ def render_sidebar():
         unsafe_allow_html=True,
     )
 
-    return lat, lon, confidence_threshold, load_hf_model
+    return lat, lon, confidence_threshold, enable_ollama
 
 
 # ------------------------------------------------------------------
@@ -377,9 +377,11 @@ def render_ingredient_recognition(recipe_engine, location_service, lat, lon, thr
         # Recipe recommendations
         ingredient_list = list(detected.keys()) if detected else []
         if ingredient_list:
+            top_ingredient = ingredient_list[0]
             st.markdown("---")
-            st.markdown("### 📖 Recipe Recommendations")
-            recommendations = recipe_engine.recommend_by_ingredients(ingredient_list, top_k=3)
+            st.markdown(f"### 📖 Recipe Recommendations for {top_ingredient.title()}")
+            # Recommend based ONLY on the highest-probability ingredient
+            recommendations = recipe_engine.recommend_by_ingredients([top_ingredient], top_k=3)
 
             for rec in recommendations:
                 render_recipe_card(rec, show_score=True)
@@ -425,7 +427,7 @@ def render_ingredient_recognition(recipe_engine, location_service, lat, lon, thr
 # ------------------------------------------------------------------
 # Query Assistant Tab
 # ------------------------------------------------------------------
-def render_query_assistant(load_hf_model: bool):
+def render_query_assistant(enable_ollama: bool):
     st.markdown("## 💬 Query Assistant")
     st.markdown("Ask follow-up questions about the detected dish, ingredients, recipes, or nearby places.")
 
@@ -435,14 +437,14 @@ def render_query_assistant(load_hf_model: bool):
 
     assistant = load_query_assistant()
 
-    # Load HF model if requested
-    if load_hf_model and not assistant.is_loaded:
-        with st.spinner("Loading Hugging Face model (this may take a moment)..."):
+    # Load model if requested
+    if enable_ollama and not assistant.is_loaded:
+        with st.spinner("Connecting to Ollama (this may take a moment)..."):
             try:
                 assistant.load_model()
-                st.success("Model loaded!")
+                st.success("Connected to Ollama!")
             except Exception as e:
-                st.warning(f"Could not load model: {e}. Using template-based responses.")
+                st.warning(f"Could not connect to Ollama: {e}. Using template-based responses.")
 
     # Show current context summary
     ctx = st.session_state.get("current_context", {})
@@ -630,7 +632,7 @@ def main():
         unsafe_allow_html=True,
     )
 
-    lat, lon, threshold, load_hf = render_sidebar()
+    lat, lon, threshold, enable_ollama = render_sidebar()
 
     recipe_engine = load_recipe_engine()
     location_service = load_location_service()
@@ -650,7 +652,7 @@ def main():
         render_ingredient_recognition(recipe_engine, location_service, lat, lon, threshold)
 
     with tab3:
-        render_query_assistant(load_hf)
+        render_query_assistant(enable_ollama)
 
     with tab4:
         render_nearby_places_tab(location_service, lat, lon)
