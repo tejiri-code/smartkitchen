@@ -55,6 +55,9 @@ class IngredientClassifier(nn.Module):
         self.num_classes = num_classes
         self.class_names = class_names or INGREDIENT_CLASSES[:num_classes]
 
+        # Detect device (GPU if available, else CPU)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # Build backbone
         weights = models.ResNet50_Weights.DEFAULT if pretrained_backbone else None
         self.backbone = models.resnet50(weights=weights)
@@ -68,6 +71,9 @@ class IngredientClassifier(nn.Module):
             nn.Dropout(p=0.2),
             nn.Linear(512, num_classes),
         )
+
+        # Move to device
+        self.to(self.device)
 
     # ------------------------------------------------------------------
     # Forward pass
@@ -84,6 +90,8 @@ class IngredientClassifier(nn.Module):
         if checkpoint_path:
             state = torch.load(checkpoint_path, map_location="cpu")
             self.load_state_dict(state)
+        # Ensure model is on the correct device after loading
+        self.to(self.device)
         self.eval()
         return self
 
@@ -99,7 +107,7 @@ class IngredientClassifier(nn.Module):
         Returns a dict of ``{ingredient_name: confidence}`` for all
         ingredients whose sigmoid probability exceeds *threshold*.
         """
-        tensor = self.get_transforms()(image).unsqueeze(0)
+        tensor = self.get_transforms()(image).unsqueeze(0).to(self.device)
         logits = self.forward(tensor)
         probs = torch.sigmoid(logits).squeeze()
 
@@ -119,7 +127,7 @@ class IngredientClassifier(nn.Module):
     @torch.no_grad()
     def predict_all(self, image: Image.Image) -> Dict[str, float]:
         """Return probabilities for ALL ingredient classes (no threshold)."""
-        tensor = self.get_transforms()(image).unsqueeze(0)
+        tensor = self.get_transforms()(image).unsqueeze(0).to(self.device)
         logits = self.forward(tensor)
         probs = torch.sigmoid(logits).squeeze()
 
