@@ -7,7 +7,7 @@ import { useGeolocation } from "@/lib/hooks/useGeolocation";
 import { geocodeAddress } from "@/lib/api/places";
 import {
   Settings, MapPin, Zap, Wand2, Camera, Loader2,
-  Gauge, Radio, MapPinOff, Trash2, ChevronRight,
+  Gauge, Radio, MapPinOff, Trash2, ChevronRight,Clock
 } from "lucide-react";
 
 const container = {
@@ -23,8 +23,8 @@ export default function SettingsPage() {
   const {
     userLat, userLon, userCity, locationEnabled, autoDetectLocation,
     confidenceThreshold, useOllama, defaultImageSource, resultsPerPage,
-    setLocation, setThreshold, setUseOllama, setAutoDetectLocation,
-    setDefaultImageSource, setResultsPerPage, clearCache, clearChat,
+    recipeHistory, setLocation, setThreshold, setUseOllama, setAutoDetectLocation,
+    setDefaultImageSource, setResultsPerPage, clearCache, clearChat, clearRecipeHistory,
   } = useSessionContext();
 
   const [addressInput, setAddressInput] = useState(userCity || "");
@@ -231,6 +231,55 @@ export default function SettingsPage() {
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-2">How many results to display per page</p>
+        </motion.div>
+
+        {/* Recipe History */}
+        <motion.div variants={item} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock size={18} className="text-purple-500" />
+            <h2 className="text-base font-bold text-gray-900">Recipe History</h2>
+          </div>
+
+          {recipeHistory.length > 0 ? (
+            <>
+              <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+                {recipeHistory.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-purple-50 border border-purple-100 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(item.timestamp).toLocaleDateString()} at{" "}
+                        {new Date(item.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={clearRecipeHistory}
+                className="w-full px-4 py-3 rounded-lg text-sm font-semibold transition-all bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100"
+              >
+                Clear History
+              </button>
+              <p className="text-xs text-gray-500 mt-2">
+                {recipeHistory.length} recipe{recipeHistory.length !== 1 ? "s" : ""} viewed
+              </p>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500">No recipe history yet</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Recipes you view will appear here
+              </p>
+            </div>
+          )}
         </motion.div>
 
         {/* Data & Cache */}

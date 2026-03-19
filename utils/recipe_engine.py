@@ -130,6 +130,73 @@ class RecipeEngine:
         return results
 
     # ------------------------------------------------------------------
+    # Joint embedding-based retrieval
+    # ------------------------------------------------------------------
+    def find_by_joint_embedding(
+        self, query: str, joint_embedder, top_k: int = 3
+    ) -> List[Dict]:
+        """Find recipes using joint text embedding (TF-IDF + SVD).
+
+        Uses the pre-built joint embedder to find similar recipes by text query.
+        Falls back to empty list if embedder is not available.
+
+        Parameters
+        ----------
+        query : str
+            Text query (dish name, ingredients, etc.)
+        joint_embedder : JointEmbedder
+            Pre-initialized joint embedder with recipe index built
+        top_k : int
+            Number of results to return
+
+        Returns
+        -------
+        list[dict]
+            Top-k recipes with similarity scores
+        """
+        if joint_embedder is None:
+            return []
+
+        results_with_scores = joint_embedder.find_by_query(query, top_k=top_k)
+        recipes = []
+        for recipe, score in results_with_scores:
+            recipes.append({**recipe, "match_score": round(float(score), 2)})
+        return recipes
+
+    def find_by_image_features(
+        self, features_2048, joint_embedder, top_k: int = 3
+    ) -> List[Dict]:
+        """Find recipes using ResNet50 image features aligned with text embeddings.
+
+        Uses the joint embedder's vision projection to map image features into
+        the shared text-image embedding space for recipe retrieval.
+
+        Parameters
+        ----------
+        features_2048 : np.ndarray
+            ResNet50 backbone features (2048-dim)
+        joint_embedder : JointEmbedder
+            Pre-initialized joint embedder with vision projection trained
+        top_k : int
+            Number of results to return
+
+        Returns
+        -------
+        list[dict]
+            Top-k recipes with similarity scores
+        """
+        if joint_embedder is None:
+            return []
+
+        results_with_scores = joint_embedder.find_by_image_features(
+            features_2048, top_k=top_k
+        )
+        recipes = []
+        for recipe, score in results_with_scores:
+            recipes.append({**recipe, "match_score": round(float(score), 2)})
+        return recipes
+
+    # ------------------------------------------------------------------
     # Convenience / summary helpers
     # ------------------------------------------------------------------
     def get_all_recipe_names(self) -> List[str]:

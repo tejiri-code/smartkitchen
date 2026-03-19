@@ -22,7 +22,7 @@ _SYSTEM_PREAMBLE = (
 )
 
 # Maximum character budget for context block (to fit within model limits)
-_MAX_CONTEXT_CHARS = 1500
+_MAX_CONTEXT_CHARS = 2500
 
 
 class PromptBuilder:
@@ -93,42 +93,60 @@ class PromptBuilder:
     # ------------------------------------------------------------------
     @staticmethod
     def _format_recipes(recipes: List[Dict]) -> str:
-        lines = ["Recipes:"]
+        lines = ["=== RECIPES ==="]
         for i, r in enumerate(recipes[:3], 1):
             name = r.get("name", "Unknown")
             prep = r.get("prep_time", "N/A")
-            ings = ", ".join(r.get("ingredients", []))
-            steps = " → ".join(r.get("steps", []))
+            cuisine = r.get("cuisine", "")
+            ings = r.get("ingredients", [])
+            steps = r.get("steps", [])
             score = r.get("score")
-            score_str = f"  Match score: {score}" if score is not None else ""
-            lines.append(f"  {i}. {name} ({prep}){score_str}")
-            lines.append(f"     Ingredients: {ings}")
-            lines.append(f"     Steps: {steps}")
+
+            # Recipe header
+            cuisine_str = f" [{cuisine}]" if cuisine else ""
+            score_str = f" (Match: {score:.2f})" if score is not None else ""
+            lines.append(f"Recipe {i}: {name}{cuisine_str} — {prep}{score_str}")
+
+            # Ingredients as bullet list
+            if ings:
+                lines.append("  Ingredients:")
+                for ing in ings:
+                    lines.append(f"    • {ing}")
+
+            # Steps as numbered list
+            if steps:
+                lines.append("  Steps:")
+                for j, step in enumerate(steps, 1):
+                    lines.append(f"    {j}. {step}")
+
+            lines.append("")  # Blank line between recipes
+
         return "\n".join(lines)
 
     @staticmethod
     def _format_substitutions(substitutions: List[Dict]) -> str:
-        lines = ["Substitutions:"]
+        lines = ["=== SUBSTITUTIONS ==="]
         for sub in substitutions:
             ing = sub.get("ingredient", "?")
             alts = ", ".join(sub.get("alternatives", []))
             notes = sub.get("notes", "")
-            lines.append(f"  - {ing} → {alts}")
+            lines.append(f"  • {ing} → {alts}")
             if notes:
-                lines.append(f"    Note: {notes}")
+                lines.append(f"    (Note: {notes})")
         return "\n".join(lines)
 
     @staticmethod
     def _format_places(places: List[Dict]) -> str:
-        lines = ["Nearby places:"]
+        lines = ["=== NEARBY PLACES ==="]
         for p in places:
             name = p.get("name", "Unknown")
             dist = p.get("distance_km", "?")
             addr = p.get("address", "")
             cat = p.get("category", "")
             rating = p.get("rating")
-            rating_str = f"  Rating: {rating}" if rating else ""
-            lines.append(f"  - {name} ({cat}) — {dist} km — {addr}{rating_str}")
+            rating_str = f" — Rating: {rating}/5" if rating else ""
+            lines.append(f"  • {name} ({cat})")
+            lines.append(f"    {dist} km away | {addr}{rating_str}")
         return "\n".join(lines)
 
 

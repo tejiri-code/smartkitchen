@@ -21,18 +21,20 @@ from utils.location_service import LocationService
 from models.dish_classifier import DishClassifier, DEFAULT_CLASSES
 from models.ingredient_classifier import IngredientClassifier, INGREDIENT_CLASSES
 from models.query_assistant import QueryAssistant
+from models.joint_embedder import JointEmbedder
 
 _dish_model: Optional[DishClassifier] = None
 _ingredient_model: Optional[IngredientClassifier] = None
 _query_assistant: Optional[QueryAssistant] = None
 _recipe_engine: Optional[RecipeEngine] = None
 _location_service: Optional[LocationService] = None
+_joint_embedder: Optional[JointEmbedder] = None
 _hf_model_loaded: bool = False
 
 
 def startup_models() -> None:
     global _dish_model, _ingredient_model, _query_assistant
-    global _recipe_engine, _location_service
+    global _recipe_engine, _location_service, _joint_embedder
 
     # Recipe engine + location service (no GPU needed)
     _recipe_engine = RecipeEngine(
@@ -41,26 +43,30 @@ def startup_models() -> None:
     )
     _location_service = LocationService(use_sample_fallback=True)
 
-    # Dish classifier
-    _dish_model = DishClassifier(
-        num_classes=len(DEFAULT_CLASSES),
-        pretrained_backbone=False,
-    )
-    if Path(DISH_CHECKPOINT).exists():
-        _dish_model.load_pretrained(DISH_CHECKPOINT)
-    else:
-        print(f"[WARN] Dish checkpoint not found at {DISH_CHECKPOINT}; using random weights.")
-        _dish_model.eval()
+    # Joint embedder for recipe retrieval
+    _joint_embedder = JointEmbedder(embedding_dim=128)
+    _joint_embedder.build_recipe_index(_recipe_engine.recipes)
+    print("[OK] Joint embedder built with TF-IDF + SVD recipe index.")
+
+    # Dish classifier (CLIP-based zero-shot, no training needed)
+    _dish_model = DishClassifier(num_classes=len(DEFAULT_CLASSES))
+    _dish_model.load_model()  # Load pretrained CLIP
+    print(f"[OK] Dish classifier initialized (CLIP zero-shot)")
 
     # Ingredient classifier
     _ingredient_model = IngredientClassifier(
         num_classes=len(INGREDIENT_CLASSES),
-        pretrained_backbone=False,
+        pretrained_backbone=True,  # Use ImageNet pretraining for better feature extraction
     )
-    if Path(INGREDIENT_CHECKPOINT).exists():
+    # Try pantry checkpoint first
+    pantry_checkpoint = Path("checkpoints/ingredient_classifier_best.pt")
+    if pantry_checkpoint.exists():
+        _ingredient_model.load_pretrained(pantry_checkpoint)
+        print(f"[OK] Loaded trained pantry model")
+    elif Path(INGREDIENT_CHECKPOINT).exists():
         _ingredient_model.load_pretrained(INGREDIENT_CHECKPOINT)
     else:
-        print(f"[WARN] Ingredient checkpoint not found at {INGREDIENT_CHECKPOINT}; using random weights.")
+        print(f"[INFO] Using ImageNet pretraining for ingredient classifier.")
         _ingredient_model.eval()
 
     # Query assistant (template fallback by default; HF model loaded lazily)
@@ -93,3 +99,7 @@ def get_recipe_engine() -> RecipeEngine:
 
 def get_location_service() -> LocationService:
     return _location_service
+
+
+def get_joint_embedder() -> JointEmbedder:
+    return _joint_embedder

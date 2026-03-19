@@ -12,6 +12,7 @@ class AskRequest(BaseModel):
     context: Dict[str, Any] = {}
     history: List[ChatTurn] = []
     use_ollama: bool = False
+    image: Optional[str] = None  # Base64 encoded image
 
 
 class AskResponse(BaseModel):

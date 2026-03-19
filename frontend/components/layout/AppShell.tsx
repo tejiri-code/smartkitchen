@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Home, ChefHat, ShoppingBasket, MessageSquare,
-  MapPin, Settings, Menu, X, Utensils,
+  MapPin, Settings, Menu, X, Utensils, BarChart3,
 } from "lucide-react";
 
 const NAV_LINKS = [
@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { href: "/ingredients", label: "Ingredients",         icon: ShoppingBasket },
   { href: "/assistant",   label: "AI Assistant",        icon: MessageSquare  },
   { href: "/places",      label: "Nearby Places",       icon: MapPin         },
+  { href: "/presentation", label: "Presentation",       icon: BarChart3      },
 ];
 
 interface Props {

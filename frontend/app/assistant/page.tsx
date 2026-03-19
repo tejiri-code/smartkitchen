@@ -6,7 +6,7 @@ import { useSessionContext } from "@/lib/hooks/useSessionContext";
 import { askAssistant } from "@/lib/api/assistant";
 import type { ChatTurn } from "@/lib/types";
 import ErrorMessage from "@/components/shared/ErrorMessage";
-import { MessageSquare, Send, RotateCcw, Sparkles, Loader2 } from "lucide-react";
+import { MessageSquare, Send, RotateCcw, Sparkles, Loader2, Zap, Wifi } from "lucide-react";
 
 const EXAMPLE_QUESTIONS = [
   "What ingredients do I need?",
@@ -18,33 +18,56 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 export default function AssistantPage() {
-  const { currentContext, predictionsMode, chatHistory, useOllama, appendChatTurn, clearChat } =
+  const { currentContext, predictionsMode, chatHistory, useOllama, appendChatTurn, clearChat, setUseOllama } =
     useSessionContext();
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [image, setImage] = useState<string | null>(null);
+  const [showOllamaInfo, setShowOllamaInfo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   async function sendQuestion(question: string) {
-    if (!question.trim() || loading) return;
+    if (!question.trim() && !image) return;
+    if (loading) return;
+    
+    const currentImage = image;
     setInput("");
+    setImage(null);
     setError(null);
     setLoading(true);
+    
     try {
       const res = await askAssistant({
-        question,
+        question: question || "What is in this image?",
         context: currentContext,
         history: chatHistory.slice(-3),
         use_ollama: useOllama,
+        image: currentImage || undefined,
       });
-      appendChatTurn({ question, answer: res.answer });
+      appendChatTurn({ question: question || "Sent an image", answer: res.answer });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to get an answer.");
+      // Restore state on error if user might want to retry
+      setImage(currentImage);
+      setInput(question);
     } finally {
       setLoading(false);
     }
@@ -53,15 +76,66 @@ export default function AssistantPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-1rem)]">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md"
-             style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }}>
-          <MessageSquare size={20} strokeWidth={2} />
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md"
+               style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }}>
+            <MessageSquare size={20} strokeWidth={2} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">AI Assistant</h1>
+            <p className="text-sm text-gray-500">Ask anything about cooking, recipes, or ingredients.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">AI Assistant</h1>
-          <p className="text-sm text-gray-500">Ask anything about cooking, recipes, or ingredients.</p>
-        </div>
+
+        {/* Ollama Toggle */}
+        <motion.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="relative"
+          onMouseEnter={() => setShowOllamaInfo(true)}
+          onMouseLeave={() => setShowOllamaInfo(false)}
+        >
+          <button
+            onClick={() => setUseOllama(!useOllama)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+              useOllama
+                ? "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+                : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200"
+            }`}
+          >
+            {useOllama ? (
+              <>
+                <Zap size={14} />
+                Qwen Enabled
+              </>
+            ) : (
+              <>
+                <Wifi size={14} />
+                Use Qwen
+              </>
+            )}
+          </button>
+
+          {/* Hover info */}
+          {showOllamaInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="absolute top-12 right-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-56 z-50"
+            >
+              <p className="text-xs font-medium text-gray-900 mb-1">
+                {useOllama ? "✓ Using Local AI (Qwen)" : "Using Template Responses"}
+              </p>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {useOllama
+                  ? "Requires Ollama running. Provides smarter, context-aware answers."
+                  : "No Ollama needed. Uses template-based responses."}
+              </p>
+            </motion.div>
+          )}
+        </motion.div>
       </div>
 
       {/* Context hint */}
@@ -153,22 +227,49 @@ export default function AssistantPage() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Image Preview */}
+      {image && (
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative w-20 h-20 mb-4 rounded-xl overflow-hidden border-2 border-indigo-500 shadow-lg">
+          <img src={image} alt="Upload preview" className="w-full h-full object-cover" />
+          <button 
+            onClick={() => setImage(null)}
+            className="absolute top-1 right-1 bg-white/80 rounded-full p-0.5 text-gray-700 hover:text-red-500 transition-colors"
+          >
+            <RotateCcw size={14} className="rotate-45" />
+          </button>
+        </motion.div>
+      )}
+
       {/* Input bar */}
       <div className="flex gap-2 pt-4 border-t border-gray-100">
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={handleImageUpload}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center justify-center p-3 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-colors cursor-pointer"
+          disabled={loading}
+        >
+          <Sparkles size={20} />
+        </button>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendQuestion(input)}
-          placeholder="Ask a question…"
+          placeholder={image ? "Ask about this image..." : "Ask a question..."}
           className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
           disabled={loading}
         />
         <button
           onClick={() => sendQuestion(input)}
-          disabled={loading || !input.trim()}
+          disabled={loading || (!input.trim() && !image)}
           className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 cursor-pointer transition-all hover:shadow-lg"
-          style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)", pointerEvents: loading || !input.trim() ? "none" : "auto" }}
+          style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)", pointerEvents: loading || (!input.trim() && !image) ? "none" : "auto" }}
         >
           <Send size={16} />
         </button>

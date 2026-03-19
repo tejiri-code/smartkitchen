@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import type { Recipe, RecipeWithScore } from "@/lib/types";
+import { useSessionContext } from "@/lib/hooks/useSessionContext";
 import IngredientBadge from "./IngredientBadge";
-import { Clock, Globe, ChefHat } from "lucide-react";
+import { Clock, Globe, ChefHat, ChevronDown } from "lucide-react";
 
 interface Props {
   recipe: Recipe | RecipeWithScore;
@@ -13,7 +15,14 @@ function isWithScore(r: Recipe | RecipeWithScore): r is RecipeWithScore {
 }
 
 export default function RecipeCard({ recipe, showScore = false }: Props) {
+  const [expandedSteps, setExpandedSteps] = useState(false);
+  const { addRecipeToHistory } = useSessionContext();
   const withScore = isWithScore(recipe) ? recipe : null;
+
+  // Track recipe view in history
+  useEffect(() => {
+    addRecipeToHistory(recipe.name);
+  }, [recipe.name, addRecipeToHistory]);
 
   return (
     <motion.div
@@ -74,17 +83,23 @@ export default function RecipeCard({ recipe, showScore = false }: Props) {
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Cooking Steps</p>
             <ol className="text-sm text-gray-700 space-y-1.5">
-              {recipe.steps.slice(0, 3).map((step, i) => (
+              {recipe.steps.slice(0, expandedSteps ? recipe.steps.length : 3).map((step, i) => (
                 <li key={i} className="list-decimal list-inside leading-snug">
                   <span className="text-gray-600">{step}</span>
                 </li>
               ))}
-              {recipe.steps.length > 3 && (
-                <li className="text-xs text-gray-400 list-none ml-6">
-                  + {recipe.steps.length - 3} more step{recipe.steps.length - 3 !== 1 ? "s" : ""}
-                </li>
-              )}
             </ol>
+            {recipe.steps.length > 3 && (
+              <button
+                onClick={() => setExpandedSteps(!expandedSteps)}
+                className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
+              >
+                <ChevronDown size={14} className={`transition-transform ${expandedSteps ? "rotate-180" : ""}`} />
+                {expandedSteps
+                  ? "Show less"
+                  : `+ ${recipe.steps.length - 3} more step${recipe.steps.length - 3 !== 1 ? "s" : ""}`}
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -12,8 +12,36 @@ import ErrorMessage from "@/components/shared/ErrorMessage";
 import IngredientBadge from "@/components/shared/IngredientBadge";
 import RecipeCard from "@/components/shared/RecipeCard";
 import PlaceList from "@/components/places/PlaceList";
-import { ShoppingBasket, MapPin, RotateCcw, Loader2 } from "lucide-react";
+import { ShoppingBasket, MapPin, RotateCcw, Loader2, Download, Zap } from "lucide-react";
 import Link from "next/link";
+
+// Sample pantry images for testing
+const SAMPLE_IMAGES = [
+  {
+    id: 1,
+    title: "Fresh Vegetables",
+    url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&h=500&fit=crop",
+    alt: "Fresh vegetables including tomatoes, bell peppers, and onions"
+  },
+  {
+    id: 2,
+    title: "Fresh Produce",
+    url: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=500&h=500&fit=crop",
+    alt: "Fresh vegetables and fruits on display"
+  },
+  {
+    id: 3,
+    title: "Cooking Ingredients",
+    url: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop",
+    alt: "Fresh vegetables and cooking ingredients displayed on wooden surface"
+  },
+  {
+    id: 4,
+    title: "Market Vegetables",
+    url: "https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=500&h=500&fit=crop",
+    alt: "Colorful fresh vegetables at farmers market"
+  },
+];
 
 const fade = {
   hidden: { opacity: 0, y: 16 },
@@ -36,6 +64,7 @@ export default function IngredientsPage() {
   const [result, setResult] = useState<IngredientRecommendResponse | null>(null);
   const [places, setPlaces] = useState<Place[] | null>(null);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
+  const [loadingSample, setLoadingSample] = useState<number | null>(null);
 
   async function handleFile(file: File) {
     setLoading(true);
@@ -70,6 +99,29 @@ export default function IngredientsPage() {
     setPlaces(null);
   }
 
+  async function testWithSampleImage(imageUrl: string, sampleId: number) {
+    setLoadingSample(sampleId);
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "sample-image.jpg", { type: "image/jpeg" });
+      await handleFile(file);
+    } catch (e) {
+      setError("Failed to load sample image. Please try uploading your own photo.");
+    } finally {
+      setLoadingSample(null);
+    }
+  }
+
+  function downloadImage(imageUrl: string, title: string) {
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `${title.toLowerCase().replace(/\s+/g, "-")}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   const missingIngredients = result?.recommendations[0]?.missing_ingredients ?? [];
 
   return (
@@ -94,6 +146,95 @@ export default function IngredientsPage() {
       </div>
 
       {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
+
+      {/* Tips */}
+      <AnimatePresence>
+        {!result && !loading && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+              <p className="text-sm font-semibold text-blue-900 mb-3">💡 Tips for Best Results</p>
+              <ul className="text-sm text-blue-800 space-y-1.5 list-disc list-inside">
+                <li><strong>Close-ups work best:</strong> Focus on individual items or shelves rather than full cabinets</li>
+                <li><strong>Good lighting:</strong> Bright, natural light helps detection accuracy</li>
+                <li><strong>Clear visibility:</strong> Make sure ingredient labels are visible</li>
+                <li><strong>Organized layout:</strong> Items spread out are easier to detect than cluttered piles</li>
+              </ul>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Example Scenarios */}
+      {/* <AnimatePresence>
+        {!result && !loading && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Example Pantry Scenarios</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: "🧂", title: "Spices & Pantry", desc: "Organized shelves with labeled jars" },
+                { icon: "🍓", title: "Fresh Produce", desc: "Vegetables and fruits on a counter" },
+                { icon: "🧊", title: "Fridge Contents", desc: "Organized fridge shelves" },
+                { icon: "🥫", title: "Canned Goods", desc: "Canned and boxed items" },
+              ].map((scenario) => (
+                <motion.div key={scenario.title} variants={item}>
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-4 text-center hover:border-gray-300 hover:shadow-md transition-all cursor-pointer">
+                    <div className="text-3xl mb-2">{scenario.icon}</div>
+                    <p className="text-xs font-semibold text-gray-700 mb-1">{scenario.title}</p>
+                    <p className="text-xs text-gray-500">{scenario.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence> */}
+
+      {/* Try Example Images */}
+      <AnimatePresence>
+        {!result && !loading && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Try Example Images</p>
+            <div className="grid grid-cols-2 gap-3">
+              {SAMPLE_IMAGES.map((sample) => (
+                <motion.div key={sample.id} variants={item} className="relative group">
+                  <div className="relative w-full aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm hover:shadow-md transition-all">
+                    {/* Image */}
+                    <img
+                      src={sample.url}
+                      alt={sample.alt}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => testWithSampleImage(sample.url, sample.id)}
+                        disabled={loadingSample === sample.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold hover:bg-gray-100 disabled:opacity-50 transition-all"
+                      >
+                        {loadingSample === sample.id ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                        {loadingSample === sample.id ? "Testing..." : "Test This"}
+                      </button>
+                      <button
+                        onClick={() => downloadImage(sample.url, sample.title)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-all"
+                      >
+                        <Download size={12} /> Download
+                      </button>
+                    </div>
+
+                    {/* Label */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2 group-hover:from-black/40">
+                      <p className="text-xs font-semibold text-white">{sample.title}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 text-center">Click "Test This" to instantly classify a sample, or "Download" to use offline</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Upload / camera */}
       <AnimatePresence>
