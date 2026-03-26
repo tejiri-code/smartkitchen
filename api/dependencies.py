@@ -53,21 +53,12 @@ def startup_models() -> None:
     _dish_model.load_model()  # Load pretrained CLIP
     print(f"[OK] Dish classifier initialized (CLIP zero-shot)")
 
-    # Ingredient classifier
+    # Ingredient classifier (CLIP-based zero-shot, no training needed)
     _ingredient_model = IngredientClassifier(
         num_classes=len(INGREDIENT_CLASSES),
-        pretrained_backbone=True,  # Use ImageNet pretraining for better feature extraction
+        model_name="ViT-L/14",
     )
-    # Try pantry checkpoint first
-    pantry_checkpoint = Path("checkpoints/ingredient_classifier_best.pt")
-    if pantry_checkpoint.exists():
-        _ingredient_model.load_pretrained(pantry_checkpoint)
-        print(f"[OK] Loaded trained pantry model")
-    elif Path(INGREDIENT_CHECKPOINT).exists():
-        _ingredient_model.load_pretrained(INGREDIENT_CHECKPOINT)
-    else:
-        print(f"[INFO] Using ImageNet pretraining for ingredient classifier.")
-        _ingredient_model.eval()
+    print(f"[OK] Ingredient classifier initialized (CLIP ViT-L/14 zero-shot)")
 
     # Query assistant (template fallback by default; HF model loaded lazily)
     _query_assistant = QueryAssistant()

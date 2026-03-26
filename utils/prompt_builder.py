@@ -13,12 +13,16 @@ from typing import Dict, Any, List, Optional
 # System preamble (instruction prefix for the generative model)
 # ------------------------------------------------------------------
 _SYSTEM_PREAMBLE = (
-    "You are a helpful cooking assistant. "
-    "Answer the user's question using ONLY the provided context. "
-    "Do not invent ingredients, restaurant names, or cooking steps "
-    "that are not in the context. "
-    "If the information is not available, say so clearly. "
-    "Keep your answer concise and practical.\n\n"
+    "You are ChefBot, a helpful cooking expert. "
+    "Answer using ONLY the provided context. "
+    "Format your response with clear structure:\n"
+    "- Use ### for recipe titles\n"
+    "- Use **Bold** for section headers like **Ingredients:** and **Cooking Steps:**\n"
+    "- Use - for ingredient lists\n"
+    "- Use numbered lists for steps\n"
+    "- Keep explanations concise and practical\n"
+    "Do not invent ingredients or steps not in the context. "
+    "If information is unavailable, say so clearly.\n\n"
 )
 
 # Maximum character budget for context block (to fit within model limits)
@@ -93,8 +97,8 @@ class PromptBuilder:
     # ------------------------------------------------------------------
     @staticmethod
     def _format_recipes(recipes: List[Dict]) -> str:
-        lines = ["=== RECIPES ==="]
-        for i, r in enumerate(recipes[:3], 1):
+        lines = []
+        for i, r in enumerate(recipes[:5], 1):
             name = r.get("name", "Unknown")
             prep = r.get("prep_time", "N/A")
             cuisine = r.get("cuisine", "")
@@ -102,26 +106,30 @@ class PromptBuilder:
             steps = r.get("steps", [])
             score = r.get("score")
 
-            # Recipe header
+            # Recipe header with markdown
             cuisine_str = f" [{cuisine}]" if cuisine else ""
-            score_str = f" (Match: {score:.2f})" if score is not None else ""
-            lines.append(f"Recipe {i}: {name}{cuisine_str} — {prep}{score_str}")
+            score_str = f" — {int(score*100)}% match" if score is not None else ""
+            lines.append(f"### Recipe {i}: {name}{cuisine_str}")
+            lines.append(f"**Time:** {prep}{score_str}")
+            lines.append("")
 
             # Ingredients as bullet list
             if ings:
-                lines.append("  Ingredients:")
+                lines.append("**Ingredients:**")
                 for ing in ings:
-                    lines.append(f"    • {ing}")
+                    lines.append(f"- {ing}")
+                lines.append("")
 
             # Steps as numbered list
             if steps:
-                lines.append("  Steps:")
-                for j, step in enumerate(steps, 1):
-                    lines.append(f"    {j}. {step}")
+                lines.append("**Cooking Steps:**")
+                for j, step in enumerate(steps[:6], 1):  # Limit to 6 steps
+                    lines.append(f"{j}. {step}")
+                if len(steps) > 6:
+                    lines.append(f"+ {len(steps) - 6} more step{'s' if len(steps) - 6 != 1 else ''}")
+                lines.append("")
 
-            lines.append("")  # Blank line between recipes
-
-        return "\n".join(lines)
+        return "\n".join(lines) if lines else "No recipes found."
 
     @staticmethod
     def _format_substitutions(substitutions: List[Dict]) -> str:

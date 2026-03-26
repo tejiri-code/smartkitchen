@@ -4,9 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSessionContext } from "@/lib/hooks/useSessionContext";
 import { askAssistant } from "@/lib/api/assistant";
-import type { ChatTurn } from "@/lib/types";
+import { submitChatFeedback } from "@/lib/api/feedback";
+import type { ChatTurn, IngredientResponse } from "@/lib/types";
 import ErrorMessage from "@/components/shared/ErrorMessage";
-import { MessageSquare, Send, RotateCcw, Sparkles, Loader2, Zap, Wifi } from "lucide-react";
+import IngredientBadge from "@/components/shared/IngredientBadge";
+import { MessageSquare, Send, RotateCcw, Sparkles, Loader2, Zap, Wifi, ThumbsUp, ThumbsDown, Utensils, X } from "lucide-react";
 
 const EXAMPLE_QUESTIONS = [
   "What ingredients do I need?",
@@ -18,7 +20,7 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 export default function AssistantPage() {
-  const { currentContext, predictionsMode, chatHistory, useOllama, appendChatTurn, clearChat, setUseOllama } =
+  const { currentContext, predictionsMode, chatHistory, useOllama, appendChatTurn, clearChat, setUseOllama, rateChatTurn, chatFeedback } =
     useSessionContext();
 
   const [input, setInput] = useState("");
@@ -26,8 +28,53 @@ export default function AssistantPage() {
   const [error, setError] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [showOllamaInfo, setShowOllamaInfo] = useState(false);
+  const [detectingIngredients, setDetectingIngredients] = useState(false);
+  const [detectedIngs, setDetectedIngs] = useState<Record<string, number> | null>(null);
+  const [showIngredientPanel, setShowIngredientPanel] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ingredientInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const handleChatFeedback = async (turnIndex: number, helpful: boolean, turn: ChatTurn) => {
+    try {
+      await submitChatFeedback({
+        question: turn.question,
+        answer: turn.answer,
+        helpful: helpful,
+      });
+      rateChatTurn(turnIndex, helpful);
+    } catch (error) {
+      console.error("Failed to submit chat feedback:", error);
+    }
+  };
+
+  const handleDetectIngredients = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDetectingIngredients(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("http://localhost:8000/classify/ingredients", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Failed to detect ingredients");
+
+      const data: IngredientResponse = await response.json();
+      setDetectedIngs(data.detected);
+      setShowIngredientPanel(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to detect ingredients");
+    } finally {
+      setDetectingIngredients(false);
+    }
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -206,9 +253,53 @@ export default function AssistantPage() {
               </div>
             </div>
             {/* Assistant message */}
-            <div className="flex justify-start">
-              <div className="max-w-xs px-4 py-3 rounded-2xl rounded-tl-none text-sm bg-white border border-gray-100 text-gray-800 leading-relaxed shadow-sm">
-                {turn.answer}
+            <div className="flex justify-start flex-col">
+              <div className="max-w-2xl px-5 py-4 rounded-2xl rounded-tl-none text-sm bg-white border border-gray-100 text-gray-700 leading-relaxed shadow-sm prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap break-words">
+                  {/* Parse and format the response */}
+                  {turn.answer.split('\n').map((line, idx) => {
+                    if (line.startsWith('###')) {
+                      return <h3 key={idx} className="text-base font-bold text-gray-900 mt-4 mb-2">{line.replace('###', '').trim()}</h3>;
+                    } else if (line.startsWith('##')) {
+                      return <h2 key={idx} className="text-lg font-bold text-gray-900 mt-4 mb-2">{line.replace('##', '').trim()}</h2>;
+                    } else if (line.startsWith('- ')) {
+                      return <li key={idx} className="ml-4 text-gray-700">{line.substring(2)}</li>;
+                    } else if (line.match(/^\d+\./)) {
+                      return <li key={idx} className="ml-4 text-gray-700 list-decimal list-inside">{line}</li>;
+                    } else if (line.startsWith('**') && line.endsWith('**')) {
+                      return <p key={idx} className="font-semibold text-gray-900 mt-2">{line.replace(/\*\*/g, '')}</p>;
+                    } else if (line.trim() === '') {
+                      return <div key={idx} className="h-2" />;
+                    } else {
+                      return <p key={idx} className="text-gray-700 my-1">{line}</p>;
+                    }
+                  })}
+                </div>
+              </div>
+              {/* Feedback buttons */}
+              <div className="flex items-center gap-1 mt-2 ml-2">
+                <button
+                  onClick={() => handleChatFeedback(i, true, turn)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    chatFeedback[i] === true
+                      ? "bg-emerald-100 text-emerald-600"
+                      : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                  }`}
+                  title="Helpful"
+                >
+                  <ThumbsUp size={14} />
+                </button>
+                <button
+                  onClick={() => handleChatFeedback(i, false, turn)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    chatFeedback[i] === false
+                      ? "bg-red-100 text-red-600"
+                      : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                  }`}
+                  title="Not helpful"
+                >
+                  <ThumbsDown size={14} />
+                </button>
               </div>
             </div>
           </motion.div>
@@ -249,12 +340,28 @@ export default function AssistantPage() {
           onChange={handleImageUpload}
           className="hidden"
         />
+        <input
+          type="file"
+          accept="image/*"
+          ref={ingredientInputRef}
+          onChange={handleDetectIngredients}
+          className="hidden"
+        />
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center justify-center p-3 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-colors cursor-pointer"
           disabled={loading}
+          title="Scan image for chat context"
         >
           <Sparkles size={20} />
+        </button>
+        <button
+          onClick={() => ingredientInputRef.current?.click()}
+          disabled={detectingIngredients}
+          className="flex items-center justify-center p-3 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-emerald-600 transition-colors cursor-pointer disabled:opacity-50"
+          title="Detect ingredients from image"
+        >
+          {detectingIngredients ? <Loader2 size={20} className="animate-spin" /> : <Utensils size={20} />}
         </button>
         <input
           type="text"
@@ -279,6 +386,46 @@ export default function AssistantPage() {
           </button>
         )}
       </div>
+
+      {/* Ingredient Detection Panel */}
+      {showIngredientPanel && detectedIngs && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Utensils size={16} className="text-emerald-600" />
+              <p className="text-sm font-semibold text-emerald-900">
+                Detected {Object.keys(detectedIngs).length} ingredient{Object.keys(detectedIngs).length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowIngredientPanel(false);
+                setDetectedIngs(null);
+              }}
+              className="text-emerald-600 hover:text-emerald-700 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(detectedIngs)
+              .sort(([, a], [, b]) => b - a)
+              .map(([ingredient]) => (
+                <IngredientBadge key={ingredient} name={ingredient} variant="detected" />
+              ))}
+          </div>
+
+          <p className="text-xs text-emerald-700 mt-3">
+            💡 These detected ingredients are now available for recipe recommendations and assistant context.
+          </p>
+        </motion.div>
+      )}
     </div>
   );
 }

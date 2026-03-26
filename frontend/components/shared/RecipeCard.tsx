@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import type { Recipe, RecipeWithScore } from "@/lib/types";
 import { useSessionContext } from "@/lib/hooks/useSessionContext";
+import { submitRecipeFeedback } from "@/lib/api/feedback";
 import IngredientBadge from "./IngredientBadge";
-import { Clock, Globe, ChefHat, ChevronDown } from "lucide-react";
+import { Clock, Globe, ChefHat, ChevronDown, ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface Props {
   recipe: Recipe | RecipeWithScore;
@@ -16,13 +17,35 @@ function isWithScore(r: Recipe | RecipeWithScore): r is RecipeWithScore {
 
 export default function RecipeCard({ recipe, showScore = false }: Props) {
   const [expandedSteps, setExpandedSteps] = useState(false);
-  const { addRecipeToHistory } = useSessionContext();
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const { addRecipeToHistory, rateRecipe, recipeFeedback } = useSessionContext();
   const withScore = isWithScore(recipe) ? recipe : null;
 
   // Track recipe view in history
   useEffect(() => {
     addRecipeToHistory(recipe.name);
   }, [recipe.name, addRecipeToHistory]);
+
+  // Check if user has already rated this recipe
+  useEffect(() => {
+    const existingRating = recipeFeedback[recipe.name];
+    if (existingRating !== undefined) {
+      setUserRating(existingRating);
+    }
+  }, [recipe.name, recipeFeedback]);
+
+  const handleRating = async (rating: number) => {
+    try {
+      await submitRecipeFeedback({
+        recipe_name: recipe.name,
+        rating: rating,
+      });
+      setUserRating(rating);
+      rateRecipe(recipe.name, rating);
+    } catch (error) {
+      console.error("Failed to submit recipe feedback:", error);
+    }
+  };
 
   return (
     <motion.div
@@ -105,8 +128,34 @@ export default function RecipeCard({ recipe, showScore = false }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2 text-xs text-gray-500">
-        <ChefHat size={12} /> {recipe.category}
+      <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <ChefHat size={12} /> {recipe.category}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handleRating(1)}
+            className={`p-1.5 rounded-lg transition-colors ${
+              userRating === 1
+                ? "bg-emerald-100 text-emerald-600"
+                : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+            }`}
+            title="Helpful"
+          >
+            <ThumbsUp size={14} />
+          </button>
+          <button
+            onClick={() => handleRating(-1)}
+            className={`p-1.5 rounded-lg transition-colors ${
+              userRating === -1
+                ? "bg-red-100 text-red-600"
+                : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+            }`}
+            title="Not helpful"
+          >
+            <ThumbsDown size={14} />
+          </button>
+        </div>
       </div>
     </motion.div>
   );

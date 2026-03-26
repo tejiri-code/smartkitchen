@@ -1,28 +1,27 @@
 """
-Ingredient Recognition Model
-=============================
-Multi-label classifier built on ResNet50 for detecting pantry
-ingredients from images.  Uses sigmoid activation and Binary
-Cross-Entropy loss for multi-label prediction.
+Ingredient Recognition Model (CLIP-based Zero-Shot)
+===================================================
+Multi-label ingredient classifier using CLIP's zero-shot capabilities.
+No training required — detects any ingredient by comparing image features
+to ingredient text embeddings.
 
 Usage
 -----
     from models.ingredient_classifier import IngredientClassifier
 
     clf = IngredientClassifier()
-    clf.load_pretrained()
-    detected = clf.predict(pil_image, threshold=0.5)
-    # {'egg': 0.92, 'onion': 0.87, 'rice': 0.79}
+    detected = clf.predict(pil_image, threshold=0.25)
+    # {'apple': 0.82, 'tomato': 0.71, 'garlic': 0.65}
 """
 
 import torch
-import torch.nn as nn
-from torchvision import models, transforms
+import clip
 from PIL import Image
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+import numpy as np
 
 # ------------------------------------------------------------------
-# Ingredient classes (11 classes as specified)
+# Ingredient classes
 # ------------------------------------------------------------------
 INGREDIENT_CLASSES: List[str] = [
     "onion", "tomato", "garlic", "milk", "pepper", "potato",
@@ -32,191 +31,159 @@ INGREDIENT_CLASSES: List[str] = [
 ]
 
 
-class IngredientClassifier(nn.Module):
-    """ResNet50-based multi-label ingredient classifier.
+class IngredientClassifier:
+    """CLIP-based zero-shot multi-label ingredient classifier.
+
+    Uses CLIP's vision and text encoders to detect ingredients without training.
+    Each ingredient is treated as a class to zero-shot classify.
 
     Parameters
     ----------
     num_classes : int
-        Number of ingredient categories.
+        Number of ingredient categories (default: 28).
     class_names : list[str] | None
         Human-readable labels for each class index.
-    pretrained_backbone : bool
-        Whether to initialise the ResNet50 backbone with ImageNet weights.
+    model_name : str
+        CLIP model variant (default: "ViT-L/14").
     """
 
     def __init__(
         self,
         num_classes: int = 28,
         class_names: Optional[List[str]] = None,
-        pretrained_backbone: bool = True,
+        model_name: str = "ViT-L/14",
     ):
-        super().__init__()
         self.num_classes = num_classes
         self.class_names = class_names or INGREDIENT_CLASSES[:num_classes]
+        self.model_name = model_name
 
-        # Detect device (GPU if available, else CPU)
+        # Detect device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Build backbone
-        weights = models.ResNet50_Weights.DEFAULT if pretrained_backbone else None
-        self.backbone = models.resnet50(weights=weights)
+        # Load CLIP model
+        self.model, self.preprocess = clip.load(model_name, device=self.device)
+        self.model.eval()
 
-        # Replace final FC layer with multi-label head (no softmax — sigmoid applied later)
-        in_features = self.backbone.fc.in_features
-        self.backbone.fc = nn.Sequential(
-            nn.Dropout(p=0.3),
-            nn.Linear(in_features, 512),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.2),
-            nn.Linear(512, num_classes),
-        )
+        # Pre-encode all ingredient names for efficiency
+        self._encode_ingredients()
 
-        # Move to device
-        self.to(self.device)
+    def _encode_ingredients(self) -> None:
+        """Pre-compute text embeddings for all ingredient classes."""
+        with torch.no_grad():
+            # Prepare text prompts: "a photo of {ingredient}"
+            texts = [f"a photo of {ing}" for ing in self.class_names]
+            text_tokens = clip.tokenize(texts).to(self.device)
+            self.ingredient_embeddings = self.model.encode_text(text_tokens)
+            self.ingredient_embeddings /= self.ingredient_embeddings.norm(dim=-1, keepdim=True)
 
-    # ------------------------------------------------------------------
-    # Forward pass
-    # ------------------------------------------------------------------
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass returning raw logits (before sigmoid)."""
-        return self.backbone(x)
-
-    # ------------------------------------------------------------------
-    # Pretrained loading
-    # ------------------------------------------------------------------
-    def load_pretrained(self, checkpoint_path: Optional[str] = None):
-        """Load a trained checkpoint."""
-        if checkpoint_path:
-            state = torch.load(checkpoint_path, map_location="cpu")
-            self.load_state_dict(state)
-        # Ensure model is on the correct device after loading
-        self.to(self.device)
-        self.eval()
-        return self
-
-    # ------------------------------------------------------------------
-    # Multi-label prediction
-    # ------------------------------------------------------------------
-    @torch.no_grad()
     def predict(
-        self, image: Image.Image, threshold: float = 0.5
+        self,
+        image: Image.Image,
+        threshold: float = 0.25,
     ) -> Dict[str, float]:
         """Predict ingredient presence from a PIL Image.
 
-        Returns a dict of ``{ingredient_name: confidence}`` for all
-        ingredients whose sigmoid probability exceeds *threshold*.
-        """
-        tensor = self.get_transforms()(image).unsqueeze(0).to(self.device)
-        logits = self.forward(tensor)
-        probs = torch.sigmoid(logits).squeeze()
+        Returns a dict of {ingredient_name: confidence} for all
+        ingredients whose similarity score exceeds *threshold*.
 
+        Parameters
+        ----------
+        image : PIL.Image
+            Input image
+        threshold : float
+            Confidence threshold (0-1). Lower = more detections.
+            Default 0.25 works well for multi-label detection.
+
+        Returns
+        -------
+        dict
+            {ingredient_name: confidence}, sorted by confidence descending
+        """
+        with torch.no_grad():
+            # Preprocess and encode image
+            image_tensor = self.preprocess(image).unsqueeze(0).to(self.device)
+            image_features = self.model.encode_image(image_tensor)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+
+            # Compute similarity with all ingredients
+            logits = (image_features @ self.ingredient_embeddings.t()).squeeze()
+            scores = torch.sigmoid(logits).cpu().numpy()
+
+        # Extract detected ingredients
         detected = {}
-        for idx, prob in enumerate(probs):
-            if prob.item() >= threshold:
-                label = (
-                    self.class_names[idx]
-                    if idx < len(self.class_names)
-                    else f"ingredient_{idx}"
-                )
-                detected[label] = round(prob.item(), 2)
+        for idx, score in enumerate(scores):
+            if score >= threshold:
+                detected[self.class_names[idx]] = round(float(score), 2)
 
         # Sort by confidence descending
         return dict(sorted(detected.items(), key=lambda x: -x[1]))
 
-    @torch.no_grad()
     def predict_all(self, image: Image.Image) -> Dict[str, float]:
-        """Return probabilities for ALL ingredient classes (no threshold)."""
-        tensor = self.get_transforms()(image).unsqueeze(0).to(self.device)
-        logits = self.forward(tensor)
-        probs = torch.sigmoid(logits).squeeze()
+        """Return confidence scores for ALL ingredient classes (no threshold).
 
+        Parameters
+        ----------
+        image : PIL.Image
+            Input image
+
+        Returns
+        -------
+        dict
+            {ingredient_name: confidence} for all classes, sorted descending
+        """
+        with torch.no_grad():
+            # Preprocess and encode image
+            image_tensor = self.preprocess(image).unsqueeze(0).to(self.device)
+            image_features = self.model.encode_image(image_tensor)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+
+            # Compute similarity with all ingredients
+            logits = (image_features @ self.ingredient_embeddings.t()).squeeze()
+            scores = torch.sigmoid(logits).cpu().numpy()
+
+        # All ingredients with scores
         result = {}
-        for idx, prob in enumerate(probs):
-            label = (
-                self.class_names[idx]
-                if idx < len(self.class_names)
-                else f"ingredient_{idx}"
-            )
-            result[label] = round(prob.item(), 2)
+        for idx, score in enumerate(scores):
+            result[self.class_names[idx]] = round(float(score), 2)
+
         return dict(sorted(result.items(), key=lambda x: -x[1]))
 
-    # ------------------------------------------------------------------
-    # Image transforms
-    # ------------------------------------------------------------------
-    @staticmethod
-    def get_transforms(train: bool = False) -> transforms.Compose:
-        """Return image transform pipeline."""
-        if train:
-            return transforms.Compose(
-                [
-                    transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.RandomVerticalFlip(p=0.2),
-                    transforms.RandomRotation(30),
-                    transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
-                    transforms.RandomPerspective(distortion_scale=0.2, p=0.4),
-                    transforms.ColorJitter(
-                        brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1
-                    ),
-                    transforms.RandomGrayscale(p=0.1),
-                    transforms.ToTensor(),
-                    transforms.Normalize(
-                        mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225],
-                    ),
-                ]
-            )
-        return transforms.Compose(
-            [
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225],
-                ),
-            ]
-        )
+    # Compatibility methods (for API compatibility, no-ops)
+    def load_pretrained(self, checkpoint_path: Optional[str] = None):
+        """No-op for API compatibility (CLIP is zero-shot, no checkpoint needed)."""
+        return self
 
-    # ------------------------------------------------------------------
-    # Loss function
-    # ------------------------------------------------------------------
-    @staticmethod
-    def get_loss_fn(pos_weight: Optional[torch.Tensor] = None) -> nn.Module:
-        """Return BCEWithLogitsLoss for multi-label training.
-        
-        Optional `pos_weight` helps handle class imbalance (e.g. fewer
-        images for some ingredients).
-        """
-        return nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-
-    # ------------------------------------------------------------------
-    # Freeze / unfreeze helpers
-    # ------------------------------------------------------------------
-    def freeze_backbone(self):
-        for name, param in self.backbone.named_parameters():
-            if "fc" not in name:
-                param.requires_grad = False
-
-    def unfreeze_backbone(self):
-        for param in self.backbone.parameters():
-            param.requires_grad = True
+    def eval(self):
+        """Set to eval mode."""
+        self.model.eval()
+        return self
 
 
 # ======================================================================
 # Quick self-test
 # ======================================================================
 if __name__ == "__main__":
-    model = IngredientClassifier(num_classes=11, pretrained_backbone=False)
-    print(f"Model created with {model.num_classes} classes: {model.class_names}")
+    from PIL import Image
+    import urllib.request
 
-    # Dummy prediction
-    dummy_img = Image.new("RGB", (256, 256), color="green")
-    all_preds = model.predict_all(dummy_img)
-    print("\nAll predictions:")
-    for name, prob in all_preds.items():
-        print(f"  {name}: {prob:.2f}")
+    print("Loading CLIP ingredient classifier...")
+    clf = IngredientClassifier(num_classes=28)
 
-    detected = model.predict(dummy_img, threshold=0.5)
-    print(f"\nDetected (threshold=0.5): {detected}")
+    # Test with a real apple image
+    print("\nDownloading test apple image...")
+    try:
+        url = "https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=500&h=500&fit=crop"
+        urllib.request.urlretrieve(url, "/tmp/apple.jpg")
+        img = Image.open("/tmp/apple.jpg")
+
+        print("\nPredicting ingredients (threshold=0.25):")
+        detected = clf.predict(img, threshold=0.25)
+        for ing, score in list(detected.items())[:5]:
+            print(f"  {ing}: {score:.2f}")
+
+        print("\nAll ingredients (top 10):")
+        all_preds = clf.predict_all(img)
+        for ing, score in list(all_preds.items())[:10]:
+            print(f"  {ing}: {score:.2f}")
+    except Exception as e:
+        print(f"Error during test: {e}")

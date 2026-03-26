@@ -12,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from api.config import ALLOWED_ORIGINS
 from api.dependencies import startup_models
-from api.routers import dish, ingredients, recipes, assistant, places
+from api.routers import dish, ingredients, recipes, assistant, places, feedback
 
 
 @asynccontextmanager
@@ -36,6 +36,7 @@ app.include_router(ingredients.router, prefix="/classify",  tags=["Classificatio
 app.include_router(recipes.router,     prefix="/recipes",   tags=["Recipes"])
 app.include_router(assistant.router,   prefix="/assistant", tags=["Assistant"])
 app.include_router(places.router,      prefix="/places",    tags=["Places"])
+app.include_router(feedback.router,    prefix="/feedback",  tags=["Feedback"])
 
 
 @app.get("/health")
