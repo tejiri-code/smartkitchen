@@ -16,29 +16,26 @@ from api.config import ALLOWED_ORIGINS
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load models and routers in background thread to avoid blocking Render health checks
-    def load_all():
+    # Register routers immediately (no heavy work)
+    from api.routers import dish, ingredients, recipes, assistant, places, feedback
+    app.include_router(dish.router,        prefix="/classify",  tags=["Classification"])
+    app.include_router(ingredients.router, prefix="/classify",  tags=["Classification"])
+    app.include_router(recipes.router,     prefix="/recipes",   tags=["Recipes"])
+    app.include_router(assistant.router,   prefix="/assistant", tags=["Assistant"])
+    app.include_router(places.router,      prefix="/places",    tags=["Places"])
+    app.include_router(feedback.router,    prefix="/feedback",  tags=["Feedback"])
+    print("[OK] All routers registered")
+
+    # Load lightweight models in background (RecipeEngine, LocationService, JointEmbedder)
+    def load_startup():
         try:
-            # Lazy import dependencies
             from api.dependencies import startup_models
-            from api.routers import dish, ingredients, recipes, assistant, places, feedback
-
-            # Load models
             startup_models()
-            print("[OK] All models loaded successfully in background")
-
-            # Add routers
-            app.include_router(dish.router,        prefix="/classify",  tags=["Classification"])
-            app.include_router(ingredients.router, prefix="/classify",  tags=["Classification"])
-            app.include_router(recipes.router,     prefix="/recipes",   tags=["Recipes"])
-            app.include_router(assistant.router,   prefix="/assistant", tags=["Assistant"])
-            app.include_router(places.router,      prefix="/places",    tags=["Places"])
-            app.include_router(feedback.router,    prefix="/feedback",  tags=["Feedback"])
-            print("[OK] All routers loaded successfully")
+            print("[OK] Startup models loaded (RecipeEngine, JointEmbedder)")
         except Exception as e:
-            print(f"[ERROR] Failed to load models/routers: {e}")
+            print(f"[ERROR] Failed to load startup models: {e}")
 
-    thread = threading.Thread(target=load_all, daemon=True)
+    thread = threading.Thread(target=load_startup, daemon=True)
     thread.start()
     yield
 
