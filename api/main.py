@@ -1,4 +1,5 @@
 import sys
+import threading
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -17,7 +18,16 @@ from api.routers import dish, ingredients, recipes, assistant, places, feedback
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    startup_models()
+    # Load models in background thread to avoid blocking Render health checks
+    def load_models():
+        try:
+            startup_models()
+            print("[OK] All models loaded successfully in background")
+        except Exception as e:
+            print(f"[ERROR] Failed to load models: {e}")
+
+    thread = threading.Thread(target=load_models, daemon=True)
+    thread.start()
     yield
 
 
