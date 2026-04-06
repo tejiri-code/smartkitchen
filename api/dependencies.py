@@ -16,12 +16,8 @@ from api.config import (
 from utils.recipe_engine import RecipeEngine
 from utils.location_service import LocationService
 
-# ML model imports are deferred to avoid slow startup when
-# checkpoints are absent; they are still loaded at startup.
-from models.dish_classifier import DishClassifier, DEFAULT_CLASSES
-from models.ingredient_classifier import IngredientClassifier, INGREDIENT_CLASSES
-from models.query_assistant import QueryAssistant
-from models.joint_embedder import JointEmbedder
+# ML model imports are lazy-loaded to speed up server startup
+# They will be imported on first use or in background during startup
 
 _dish_model: Optional[DishClassifier] = None
 _ingredient_model: Optional[IngredientClassifier] = None
@@ -35,6 +31,12 @@ _hf_model_loaded: bool = False
 def startup_models() -> None:
     global _dish_model, _ingredient_model, _query_assistant
     global _recipe_engine, _location_service, _joint_embedder
+
+    # Lazy imports inside function to speed up server startup
+    from models.dish_classifier import DishClassifier, DEFAULT_CLASSES
+    from models.ingredient_classifier import IngredientClassifier, INGREDIENT_CLASSES
+    from models.query_assistant import QueryAssistant
+    from models.joint_embedder import JointEmbedder
 
     # Recipe engine + location service (no GPU needed)
     _recipe_engine = RecipeEngine(
