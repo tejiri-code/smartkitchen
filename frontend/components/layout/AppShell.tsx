@@ -94,7 +94,7 @@ export default function AppShell({ children }: Props) {
           </div>
           <span className="font-bold text-gray-900 text-sm">SmartKitchen</span>
         </div>
-        <Link href="/settings" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer">
+        <Link href="/settings" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 ml-auto cursor-pointer">
           <Settings size={18} />
         </Link>
       </div>
