@@ -16,4 +16,5 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://smartkitchen-three.vercel.app",
+    "https://smartktchen.duckdns.org",
 ]
