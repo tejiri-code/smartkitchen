@@ -25,7 +25,7 @@ _joint_embedder: Optional[Any] = None
 
 
 def startup_models() -> None:
-    """Load only lightweight, non-GPU components. Heavy models load on-demand."""
+    """Load all models on startup to avoid timeout issues on first request."""
     global _recipe_engine, _location_service, _joint_embedder
 
     # Recipe engine + location service (no GPU, fast)
@@ -41,6 +41,15 @@ def startup_models() -> None:
     _joint_embedder = JointEmbedder(embedding_dim=128)
     _joint_embedder.build_recipe_index(_recipe_engine.recipes)
     print("[OK] Joint embedder built with TF-IDF + SVD recipe index")
+
+    # Pre-load CLIP models on startup to avoid timeout on first API request
+    # This ensures /classify endpoints respond quickly
+    try:
+        _load_dish_model()
+        _load_ingredient_model()
+        print("[OK] All CLIP models pre-loaded on startup")
+    except Exception as e:
+        print(f"[WARNING] Failed to pre-load some models: {e}")
 
 
 def _load_dish_model() -> Any:
