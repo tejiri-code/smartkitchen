@@ -20,7 +20,7 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 export default function AssistantPage() {
-  const { currentContext, predictionsMode, chatHistory, useOllama, appendChatTurn, clearChat, setUseOllama, rateChatTurn, chatFeedback } =
+  const { currentContext, predictionsMode, chatHistory, useOllama, appendChatTurn, clearChat, setUseOllama, rateChatTurn, chatFeedback, setCurrentContext } =
     useSessionContext();
 
   const [input, setInput] = useState("");
@@ -78,7 +78,7 @@ export default function AssistantPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+  }, [chatHistory, loading]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,13 +94,13 @@ export default function AssistantPage() {
   async function sendQuestion(question: string) {
     if (!question.trim() && !image) return;
     if (loading) return;
-    
+
     const currentImage = image;
     setInput("");
     setImage(null);
     setError(null);
     setLoading(true);
-    
+
     try {
       const res = await askAssistant({
         question: question || "What is in this image?",
@@ -110,6 +110,10 @@ export default function AssistantPage() {
         image: currentImage || undefined,
       });
       appendChatTurn({ question: question || "Sent an image", answer: res.answer });
+      // Update context with augmented recipes from RAG retrieval
+      if (res.context) {
+        setCurrentContext(res.context);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to get an answer.");
       // Restore state on error if user might want to retry

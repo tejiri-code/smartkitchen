@@ -104,6 +104,7 @@ DEFAULT_CLASSES: List[str] = [
     
     # Latin American Cuisine
     "a photo of tacos",
+    "a photo of Feijoada"
     "a photo of tamales",
     "a photo of pupusas",
     "a photo of enchiladas",

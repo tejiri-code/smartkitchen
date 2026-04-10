@@ -8,6 +8,7 @@ from api.dependencies import (
     ensure_ollama_available,
     get_joint_embedder,
     get_recipe_engine,
+    get_rl_reranker,
 )
 from api.schemas.assistant import AskRequest, AskResponse
 from utils.rag_retriever import RAGRetriever
@@ -24,10 +25,13 @@ def ask_assistant(body: AskRequest):
 
     history = [{"question": t.question, "answer": t.answer} for t in body.history[-3:]]
 
-    # RAG: Retrieve relevant recipes per question
+    # RAG: Retrieve relevant recipes per question, with RL reranking
     embedder = get_joint_embedder()
     engine = get_recipe_engine()
-    context = RAGRetriever.retrieve(body.question, body.context, embedder, engine)
+    reranker = get_rl_reranker()
+    context = RAGRetriever.retrieve(
+        body.question, body.context, embedder, engine, reranker=reranker
+    )
 
     if body.image:
         try:
@@ -51,4 +55,4 @@ def ask_assistant(body: AskRequest):
             history=history,
         )
 
-    return AskResponse(answer=answer, used_model=assistant.is_loaded)
+    return AskResponse(answer=answer, used_model=assistant.is_loaded, context=context)

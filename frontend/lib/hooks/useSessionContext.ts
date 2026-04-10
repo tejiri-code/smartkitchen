@@ -35,6 +35,7 @@ interface SessionState {
   // Actions
   setDishContext: (ctx: AssistantContext) => void;
   setIngredientContext: (ctx: AssistantContext) => void;
+  setCurrentContext: (ctx: AssistantContext) => void;
   appendChatTurn: (turn: ChatTurn) => void;
   clearChat: () => void;
   addRecipeToHistory: (recipeName: string) => void;
@@ -78,6 +79,9 @@ export const useSessionContext = create<SessionState, [["zustand/persist", unkno
 
       setIngredientContext: (ctx) =>
         set({ currentContext: ctx, predictionsMode: "ingredients" }),
+
+      setCurrentContext: (ctx) =>
+        set({ currentContext: ctx }),
 
       appendChatTurn: (turn) =>
         set((s) => ({ chatHistory: [...s.chatHistory, turn] })),

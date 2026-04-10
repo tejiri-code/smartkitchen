@@ -1,37 +1,54 @@
 # 🍳 SmartKitchen: A Vision-Language Cooking Assistant
 
-![Python](https://img.shields.io/badge/Python-3.10-blue)
-![PyTorch](https://img.shields.io/badge/PyTorch-Deep%20Learning-red)
-![Transformers](https://img.shields.io/badge/HuggingFace-Transformers-yellow)
-![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-ff4b4b)
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
+![Next.js](https://img.shields.io/badge/Next.js-Frontend-000000)
+![CLIP](https://img.shields.io/badge/CLIP-Vision-412991)
+![Qwen](https://img.shields.io/badge/Qwen2.5-LLM-FF6B35)
 ![OpenStreetMap](https://img.shields.io/badge/Geospatial-OpenStreetMap-green)
 ![License](https://img.shields.io/badge/License-Academic-lightgrey)
 
-A multimodal AI application that combines **computer vision**, **generative language modelling**, **structured recipe retrieval**, and **location-aware recommendations** to help users decide what to cook or where to buy food.
+A modern, full-stack multimodal AI application that combines **CLIP zero-shot vision**, **joint embeddings**, **retrieval-augmented generation (RAG)**, and **location-aware recommendations** to help users identify dishes, detect ingredients, find recipes, and locate nearby restaurants or grocery stores.
 
-> **MSc Deep Learning Coursework Project**
+> **MSc Deep Learning Coursework Project** — Now in production on Vercel + DigitalOcean
+
+---
+
+## 🚀 Live Demo
+
+- **Frontend**: https://smartkitchen-three.vercel.app
+- **Backend API**: https://smartktchen.duckdns.org
 
 ---
 
 ## ✨ Features
 
-- 🍝 **Dish Recognition**  
-  Identify prepared meals using **ResNet50 trained on Food-101**.
+- 🍝 **Zero-Shot Dish Recognition**
+  Identify prepared meals using **CLIP ViT-L/14** — works on 230+ food categories without retraining.
 
-- 🧺 **Ingredient Detection**  
-  Multi-label classification of pantry ingredients.
+- 🧺 **Multi-Label Ingredient Detection**
+  Detect up to **28 ingredients** simultaneously with zero-shot CLIP multi-label classification.
 
-- 📖 **Recipe Recommendation Engine**  
-  Retrieves recipes from a **2,000+ recipe database** using ingredient overlap scoring.
+- 📖 **Hybrid Recipe Retrieval**
+  - **Joint Embedding Search**: TF-IDF + SVD + Ridge regression for semantic recipe matching
+  - **Fuzzy Matching Fallback**: SequenceMatcher for edge cases
+  - Returns **2,000+ recipes** ranked by relevance, with cooking steps, nutrition, and substitution rules.
 
-- 🤖 **Query Assistant (RAG)**  
-  Powered by **FLAN-T5** to answer cooking questions using system context.
+- 🤖 **Intelligent Query Assistant**
+  - **RAG-powered**: Dynamically retrieves relevant recipes for each question
+  - **Qwen2.5 LLM**: Text-only or multimodal (Llama 3.2-Vision) via Ollama
+  - **Conversation Memory**: 5-turn history with structured formatting
 
-- 📍 **Location Awareness**  
-  Suggest nearby **restaurants** or **grocery stores** using **OpenStreetMap**.
+- 📍 **Location Awareness**
+  Find nearby **restaurants** or **grocery stores** using **OpenStreetMap** (Overpass API).
 
-- 🖥 **Interactive Interface**  
-  Built with **Streamlit** for fast experimentation and demos.
+- 💾 **Persistent User State**
+  - Recipe history tracking with timestamps (max 20, auto-deduped)
+  - User preferences saved to localStorage
+  - Detection context survives page navigation
+
+- 🎯 **Modern Web Interface**
+  Built with **Next.js 16 + Tailwind CSS v4** — responsive, fast, accessible.
 
 ## Architecture
 

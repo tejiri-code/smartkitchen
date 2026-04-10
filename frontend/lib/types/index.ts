@@ -98,6 +98,7 @@ export interface AskRequest {
 export interface AskResponse {
   answer: string;
   used_model: boolean;
+  context?: AssistantContext;
 }
 
 // ---- Location ----

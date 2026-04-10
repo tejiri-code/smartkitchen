@@ -3,9 +3,10 @@ RAG (Retrieval-Augmented Generation) Retriever
 ==============================================
 Dynamically retrieves relevant recipes per question using joint embeddings,
 then augments the assistant context before answering.
+Optionally reranks results based on user feedback via RL reranker.
 """
 
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 
 class RAGRetriever:
@@ -17,12 +18,14 @@ class RAGRetriever:
         context: Dict[str, Any],
         embedder,
         engine,
+        reranker=None,
         top_k: int = 3,
     ) -> Dict[str, Any]:
         """Retrieve top-k recipes by semantic similarity to the question.
 
         Attempts both text-based and ingredient-based retrieval, then merges
         and deduplicates by recipe name, keeping the highest score.
+        Optionally reranks results using RL feedback if reranker is provided.
 
         Parameters
         ----------
@@ -34,6 +37,8 @@ class RAGRetriever:
             Pre-initialized joint embedder with recipe index
         engine : RecipeEngine
             Recipe engine for ingredient-based recommendations
+        reranker : RLReranker, optional
+            Reranker to boost recipes based on user feedback
         top_k : int
             Number of recipes to retrieve
 
@@ -81,6 +86,14 @@ class RAGRetriever:
 
         # Extract just the recipe dicts
         final_recipes = [recipe for recipe, _ in sorted_recipes]
+
+        # Apply RL reranking if available (boost liked recipes based on user feedback)
+        if final_recipes and reranker is not None:
+            try:
+                final_recipes = reranker.rerank(final_recipes)
+            except Exception as e:
+                # If reranking fails, continue with original ranking
+                print(f"[WARN] RL reranking failed: {e}")
 
         # Augment context with retrieved recipes
         if final_recipes:

@@ -22,11 +22,12 @@ _models_cache: dict[str, Any] = {}
 _recipe_engine: Optional[RecipeEngine] = None
 _location_service: Optional[LocationService] = None
 _joint_embedder: Optional[Any] = None
+_rl_reranker: Optional[Any] = None
 
 
 def startup_models() -> None:
     """Load all models on startup to avoid timeout issues on first request."""
-    global _recipe_engine, _location_service, _joint_embedder
+    global _recipe_engine, _location_service, _joint_embedder, _rl_reranker
 
     # Recipe engine + location service (no GPU, fast)
     _recipe_engine = RecipeEngine(
@@ -41,6 +42,11 @@ def startup_models() -> None:
     _joint_embedder = JointEmbedder(embedding_dim=128)
     _joint_embedder.build_recipe_index(_recipe_engine.recipes)
     print("[OK] Joint embedder built with TF-IDF + SVD recipe index")
+
+    # Load RL reranker (loads user feedback from feedback.jsonl)
+    from models.rl_reranker import RLReranker
+    _rl_reranker = RLReranker(feedback_file="data/feedback.jsonl")
+    print("[OK] RL reranker loaded (ready to boost liked recipes)")
 
     # Pre-load CLIP models on startup to avoid timeout on first API request
     # This ensures /classify endpoints respond quickly
@@ -81,6 +87,7 @@ def _load_query_assistant() -> Any:
     if "query_assistant" not in _models_cache:
         from models.query_assistant import QueryAssistant
         model = QueryAssistant()
+        model.load_model()  # Check if Ollama is available
         _models_cache["query_assistant"] = model
         print("[OK] Query assistant loaded")
     return _models_cache["query_assistant"]
@@ -102,11 +109,10 @@ def get_query_assistant() -> Any:
 
 
 def ensure_ollama_available() -> None:
-    """Connect to Ollama on first request if not already done."""
+    """Ensure Ollama is available. Already called during lazy load, but re-check if needed."""
     assistant = get_query_assistant()
-    if hasattr(assistant, '_ollama_loaded') and not assistant._ollama_loaded:
+    if not assistant.is_loaded:
         assistant.load_model()
-        assistant._ollama_loaded = True
 
 
 def get_recipe_engine() -> RecipeEngine:
@@ -122,3 +128,8 @@ def get_location_service() -> LocationService:
 def get_joint_embedder() -> Any:
     """Get joint embedder (always loaded at startup)."""
     return _joint_embedder
+
+
+def get_rl_reranker() -> Any:
+    """Get RL reranker (always loaded at startup)."""
+    return _rl_reranker
